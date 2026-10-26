@@ -246,7 +246,7 @@ set_global_assignment -name SDC_FILE Namco_S10.sdc
 set_global_assignment -name SYSTEMVERILOG_FILE Namco_S10.sv
 # (SI drive-strength experiment 2026-06-17 reverted: 8mA had ZERO effect on the corruption
 #  => it is NOT signal integrity; it's a logic/burst-addressing bug.)
-set_global_assignment -name SEED 25
+set_global_assignment -name SEED 20
 
 set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
 set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top

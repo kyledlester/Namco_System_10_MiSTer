@@ -224,7 +224,9 @@ Point Blank 3 also has its own gun calibration in its service menu, as on the ca
   the English Cristaltec release). The region is read at boot, so reset after changing it.
 * **Mount CD** (Taiko games) / **Mount audio** (MP3 board games): see above.
 * **Light Gun** (gun games only) and **Trackball** (NFL Classic Football only): see above.
-* **Hardware**: Pause when OSD open.
+* **Hardware**: Pause when OSD open. **IRQ10 (Input)**: 100Hz (default, as MAME) or 2xVBlank. The board's real I/O
+  interrupt rate is unknown (MAME's 100 Hz is a placeholder); with 2xVBlank it fires twice per frame, so Mr. Driller 2 / G
+  sample the inputs exactly once per frame (smoother rapid fire). Contributed by guljam.
 
 ## Saves
 
