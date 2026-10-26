@@ -406,6 +406,7 @@ parameter CONF_STR = {
 	"P3,Hardware;",
 	"P3-;",
 	"P3O[64],Pause when OSD open,Off,On;",
+	"P3O[65],IRQ10 (Input),100Hz,2xVBlank;",
 	"-;",
 	"R0,Reset;",
 	"J1,Button 1,Button 2,Button 3,Button 4,Button 5,Button 6,Start,Coin,Test,Service,Pause;",
@@ -1224,6 +1225,8 @@ s10_io s10_io
 	.gun_y0     (gun_y0),
 	.gun_x1     (gun_x1),
 	.gun_y1     (gun_y1),
+	.irq10_vbl  (status[65]),
+	.vblank     (psx_vbl),
 	.cd_intrq   (cd_intrq),
 	.irq10      (s10_irq10)
 );

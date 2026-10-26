@@ -10,7 +10,7 @@
 //   BA0004 R   IN1 bits 15-0     BA0006 R  IN1 bits 31-16  (32-bit JAMMA inputs, active low)
 //   BA0008 R/W I2C clock          BA000A R/W I2C data  (bit-banged; the device ACKs every byte, as in MAME)
 //   BA0012/14/16/18 W  interrupt acknowledge, bit 0/1/2/3
-//   BA001A R   interrupt status: bit 3 = I/O update (100 Hz), bit 2 = CD-ROM, bit 1 = EXIO
+//   BA001A R   interrupt status: bit 3 = I/O update (100 Hz or 2x VBlank), bit 2 = CD-ROM, bit 1 = EXIO
 //   BF0000 R   CD-ROM present probe: 1
 // EXIO(G) light-gun board (exio_ident != 0xFF; MAME namcos10_map_exio_inner, mirrored at 0x1FE00000):
 //   E80000/E88000 R  P1 X bits 5-0 / 21-6     E90000/E98000 R  P1 Y bits 5-0 / 21-6
@@ -19,6 +19,9 @@
 //   (lamps / coin counters at E40000-E48000, gun re-arm at EC0000/EC8000).
 //   B20000, B60000 (watchdog), BC0000 (ATA): ignored / read 0
 // A 100 Hz timer sets status bit 3 and pulses IRQ10 (MAME io_update_interrupt_callback).
+// Optional (OSD IRQ10 = 2xVBlank): the same pulse at 1/4 and 3/4 of the last frame length after each VBlank,
+// two per frame (~119.88/s). The real-board IRQ10 source is unknown (MAME: TODO); Mr. Driller 2/G store IN1
+// on every other IRQ10, so 2x VBlank gives one input sample per frame (100 Hz: 50 samples/s).
 module s10_io #(
     parameter int CLK_HZ = 33_868_800
 ) (
@@ -38,6 +41,8 @@ module s10_io #(
     input  wire  [7:0] exio_ident,      // 0xFF = no expansion board
     input  wire  [8:0] gun_x0, gun_y0,  // light-gun positions (MAME EXIO_LIGHTGUN ports: X 0..319, Y 0..239)
     input  wire  [8:0] gun_x1, gun_y1,
+    input  wire        irq10_vbl,        // IRQ10 source: 0 = 100 Hz timer (MAME), 1 = 2x VBlank
+    input  wire        vblank,           // PSX VBlank (clk domain), rising edge = frame start
     input  wire        cd_intrq,         // ATAPI INTRQ (level): status bit 2 + IRQ10 (MAME cdrom_interrupt)
 
     output reg         irq10 = 1'b0     // IRQ10 request (one clock pulse)
@@ -47,6 +52,13 @@ module s10_io #(
     reg [21:0] tcnt = 0;
     reg  [3:0] intst = 0;
     reg        cd_q = 1'b0;
+
+    // 2x VBlank: IRQ10 at 1/4 and 3/4 of the last frame length after each VBlank rising edge
+    localparam int FRAME_NOM = (CLK_HZ / 2997) * 50;   // 59.94 Hz, used until the first frame is measured
+    reg        vbl_q = 1'b0;
+    reg [21:0] fcnt = 0, fper = FRAME_NOM[21:0];
+    wire       vbl_rise = vblank & ~vbl_q;
+    wire       vbl_tick = (fcnt == {2'b00, fper[21:2]}) || (fcnt == {2'b00, fper[21:2]} + {1'b0, fper[21:1]});
 
     // ------------------------------------------------------------------ EXIO ident shifter
     reg  [2:0] exio_bit  = 3'd7;
@@ -132,6 +144,9 @@ module s10_io #(
         if (reset) begin
             tcnt      <= 0;
             intst     <= 0;
+            fcnt      <= 0;
+            fper      <= FRAME_NOM[21:0];
+            vbl_q     <= 1'b0;
             exio_bit  <= 3'd7;
             exio_byte <= 0;
             host_clk  <= 1'b1; host_dat <= 1'b1;
@@ -142,9 +157,15 @@ module s10_io #(
         end else begin
             if (tcnt == TICK - 1) begin
                 tcnt     <= 0;
-                intst[3] <= 1'b1;
-                irq10    <= 1'b1;
+                if (!irq10_vbl) begin
+                    intst[3] <= 1'b1;
+                    irq10    <= 1'b1;
+                end
             end else tcnt <= tcnt + 1'd1;
+            // 2x VBlank: IRQ10 at 1/4 and 3/4 of the last frame length after each VBlank rising edge
+            vbl_q <= vblank;
+            if (vbl_rise) begin fcnt <= 0; fper <= fcnt; end else if (~&fcnt) fcnt <= fcnt + 1'd1;
+            if (irq10_vbl && vbl_tick && !vbl_rise) begin intst[3] <= 1'b1; irq10 <= 1'b1; end
             // CD-ROM interrupt: bit 2 follows INTRQ (set on assert, cleared on deassert or ack), IRQ10 on assert
             cd_q <= cd_intrq;
             if (cd_intrq && !cd_q) begin intst[2] <= 1'b1; irq10 <= 1'b1; end

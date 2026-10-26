@@ -42,6 +42,7 @@ architecture sim of tb_s10 is
          exio_ident : in std_logic_vector(7 downto 0);
          gun_x0 : in std_logic_vector(8 downto 0); gun_y0 : in std_logic_vector(8 downto 0);
          gun_x1 : in std_logic_vector(8 downto 0); gun_y1 : in std_logic_vector(8 downto 0);
+         irq10_vbl : in std_logic; vblank : in std_logic;
          cd_intrq : in std_logic; irq10 : out std_logic
       );
    end component;
@@ -271,7 +272,7 @@ begin
          rd => s10_rd, wr => s10_wr, rdata => io_rdata,
          dsw => x"00", in1 => tb_in1, exio_ident => b_exio,
          gun_x0 => '0' & x"A0", gun_y0 => '0' & x"78", gun_x1 => '0' & x"A0", gun_y1 => '0' & x"78",
-         cd_intrq => '0', irq10 => s10_irq10
+         irq10_vbl => '0', vblank => '0', cd_intrq => '0', irq10 => s10_irq10
       );
 
    imem : s10_mem
